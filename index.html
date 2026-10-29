@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Mapricot Foods — Sales Command Centre</title>
+<link rel="icon" type="image/svg+xml" href="/Mapricot-command-centre/favicon.svg" />
+<script>
+(function () {
+  try {
+    var s = localStorage.getItem('mcc-theme');
+    var t = s === 'light' || s === 'dark' ? s : (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    document.documentElement.setAttribute('data-theme', t);
+  } catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
+})();
+</script>
+<style id="lock-style">
+:root { --bg:#14110f; --card:#1e1a17; --ink:#f3ece4; --muted:#a79a8c; --line:#3a322b; --accent:#e0a458; --bad:#ff8a7a; }
+:root[data-theme="light"] { --bg:#f6f1ea; --card:#ffffff; --ink:#2a2118; --muted:#74685b; --line:#e2d8cb; --accent:#a8541c; --bad:#b3261e; }
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.lk { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+.lk-card { width: min(420px, 100%); background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 28px 24px; }
+.lk-eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+.lk h1 { font-size: 22px; margin: 0 0 8px; }
+.lk p { color: var(--muted); font-size: 14px; line-height: 1.5; margin: 0 0 18px; }
+.lk form { display: grid; gap: 12px; }
+.lk input[type=password] { width: 100%; padding: 12px; font-size: 16px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; letter-spacing: .08em; }
+.lk input[type=password]:focus-visible, .lk button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lk button { padding: 12px; font-size: 15px; font-weight: 600; color: var(--bg); background: var(--accent); border: 0; border-radius: 8px; cursor: pointer; }
+.lk button:disabled { opacity: .55; cursor: default; }
+.lk label { font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.lk .err { color: var(--bad); font-size: 14px; min-height: 20px; margin-top: 12px; }
+</style>
+</head>
+<body>
+<div id="root">
+  <div class="lk"><div class="lk-card">
+    <div class="lk-eyebrow">Mapricot Foods Pvt. Ltd. · Internal</div>
+    <h1>Sales Command Centre</h1>
+    <p>This report is for the Mapricot team. Everything on it, including client names and amounts, is stored encrypted. Enter the team passcode to open it.</p>
+    <form id="f">
+      <input id="p" type="password" autocomplete="current-password" autofocus placeholder="Passcode" aria-label="Passcode" />
+      <button id="b" type="submit">Open</button>
+      <label><input id="r" type="checkbox" checked /> Remember on this device</label>
+    </form>
+    <div class="err" id="e" role="alert"></div>
+  </div></div>
+</div>
+<script>
+(function () {
+  var KEY = 'cc-site-pass-v1';
+  var $ = function (i) { return document.getElementById(i); };
+  var store = function (area, fn) { try { return fn(window[area]); } catch (e) { return null; } };
+  var b64 = function (s) { return Uint8Array.from(atob(s), function (c) { return c.charCodeAt(0); }); };
+  var cache = null;
+  function load() {
+    if (!cache) cache = fetch('site.enc.json', { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('download ' + r.status); return r.json(); });
+    return cache;
+  }
+  async function open(pass) {
+    var E = await load();
+    var mat = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+    var key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: b64(E.salt), iterations: E.iter, hash: 'SHA-256' }, mat, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+    var plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(E.iv) }, key, b64(E.data));   // throws on a wrong passcode
+    var text = await new Response(new Blob([plain]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+    return JSON.parse(text);
+  }
+  function start(app) {
+    var ls = $('lock-style'); if (ls) ls.remove();
+    document.body.innerHTML = '<div id="root"></div>';
+    var st = document.createElement('style'); st.textContent = app.css; document.head.appendChild(st);
+    var sc = document.createElement('script'); sc.type = 'module'; sc.textContent = app.js; document.body.appendChild(sc);
+  }
+  async function unlock(raw, fromSaved) {
+    var p = String(raw).replace(/[\s-]/g, '').toUpperCase();
+    $('b').disabled = true; $('b').textContent = 'Opening…'; $('e').textContent = '';
+    try {
+      var app = await open(p);
+      store('sessionStorage', function (a) { a.setItem(KEY, p); });
+      if ($('r').checked) store('localStorage', function (a) { a.setItem(KEY, p); });
+      start(app);
+    } catch (err) {
+      var wrong = err && err.name === 'OperationError';
+      if (wrong) { store('sessionStorage', function (a) { a.removeItem(KEY); }); store('localStorage', function (a) { a.removeItem(KEY); }); }
+      if (!fromSaved) $('e').textContent = wrong ? 'That passcode did not open the report.' : 'Could not open the report (' + (err && err.message || err) + '). Check your connection and try again.';
+      $('b').disabled = false; $('b').textContent = 'Open';
+    }
+  }
+  $('f').addEventListener('submit', function (ev) { ev.preventDefault(); if ($('p').value) unlock($('p').value, false); });
+  if (!window.crypto || !crypto.subtle) $('e').textContent = 'This browser cannot open the report (needs a secure https connection).';
+  var saved = store('sessionStorage', function (a) { return a.getItem(KEY); }) || store('localStorage', function (a) { return a.getItem(KEY); });
+  if (saved) unlock(saved, true);
+})();
+</script>
+</body>
+</html>
