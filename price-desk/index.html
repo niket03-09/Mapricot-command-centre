@@ -175,7 +175,7 @@ tbody tr:last-child td { border-bottom: 0; }
     else if (S.tab === 'cost') { cats = D.dir.pricing; ph = 'Search product'; }
     else { cats = D.team.categories; ph = 'Search product, e.g. classic tea'; }
     var stateKey = S.tab === 'rec' ? 'rq' : 'q', catKey = S.tab === 'rec' ? 'rcat' : 'cat';
-    m.innerHTML = stale(S.tab === 'price' ? D.team : D.dir) +
+    m.innerHTML = stale(S.tab === 'price' ? D.team : S.tab === 'rec' ? { asOf: D.dir.recipesAsOf } : D.dir) +
       '<div class="tools"><input id="q" type="search" placeholder="' + esc(ph) + '" aria-label="Search" value="' + esc(S[stateKey]) + '" autocomplete="off" />' + chips(cats, S[catKey], 'c') + '<div class="count" id="cnt"></div></div><div id="body"></div>' +
       '<div class="note">Confidential. For Mapricot staff only. Do not forward, photograph or share. Every screen carries ' + esc(D.me.name) + '’s name.</div>';
     $('q').oninput = function () { S[stateKey] = this.value.trim().toLowerCase(); renderBody(); };
