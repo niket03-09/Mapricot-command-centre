@@ -88,7 +88,7 @@ tbody tr:last-child td { border-bottom: 0; }
     <form id="f">
       <input id="p" type="password" autocomplete="current-password" autofocus placeholder="Your passcode" aria-label="Passcode" />
       <button class="go" id="b" type="submit">Open</button>
-      <label><input id="r" type="checkbox" checked /> Remember on this device</label>
+      <label><input id="r" type="checkbox" /> Keep me signed in on this device for 8 hours</label>
     </form>
     <div class="err" id="e" role="alert"></div>
   </div></div>
@@ -96,7 +96,7 @@ tbody tr:last-child td { border-bottom: 0; }
 <script>
 (function () {
   'use strict';
-  var KEY = 'cc-pricedesk-pass-v1';
+  var KEY = 'cc-pricedesk-pass-v2', OLDKEY = 'cc-pricedesk-pass-v1';
   var $ = function (i) { return document.getElementById(i); };
   var store = function (area, fn) { try { return fn(window[area]); } catch (e) { return null; } };
   var b64 = function (s) { return Uint8Array.from(atob(s), function (c) { return c.charCodeAt(0); }); };
@@ -258,8 +258,7 @@ tbody tr:last-child td { border-bottom: 0; }
     var btn = $('b'); btn.disabled = true; btn.textContent = 'Opening…'; $('e').textContent = '';
     try {
       D = await open(p);
-      store('sessionStorage', function (a) { a.setItem(KEY, p); });
-      if ($('r') && $('r').checked) store('localStorage', function (a) { a.setItem(KEY, p); });
+      if ($('r') && $('r').checked) store('localStorage', function (a) { a.setItem(KEY, JSON.stringify({ p: p, e: Date.now() + 8 * 3600 * 1000 })); });
       watermark(D.me.name + ' · Mapricot confidential');
       shell();
     } catch (err) {
@@ -270,7 +269,8 @@ tbody tr:last-child td { border-bottom: 0; }
   }
   $('f').addEventListener('submit', function (ev) { ev.preventDefault(); if ($('p').value) unlock($('p').value, false); });
   if (!window.crypto || !crypto.subtle) $('e').textContent = 'This browser cannot open the Price Desk (it needs a secure https connection).';
-  var saved = store('sessionStorage', function (a) { return a.getItem(KEY); }) || store('localStorage', function (a) { return a.getItem(KEY); });
+  store('localStorage', function (a) { a.removeItem(OLDKEY); }); store('sessionStorage', function (a) { a.removeItem(OLDKEY); a.removeItem('cc-outstanding-pass-v2'); a.removeItem('cc-outstanding-pass-v3'); });
+  var saved = null; try { var sv = JSON.parse(store('localStorage', function (a) { return a.getItem(KEY); }) || 'null'); if (sv && sv.p && sv.e > Date.now()) saved = sv.p; else store('localStorage', function (a) { a.removeItem(KEY); }); } catch (e) { saved = null; }
   if (saved) unlock(saved, true);
 })();
 </script>
